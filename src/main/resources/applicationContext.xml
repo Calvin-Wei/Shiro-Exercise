@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	<!-- 配置 SecurityManager! -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="cacheManager" ref="cacheManager" />
+		<property name="authenticator" ref="authenticator" />
+		<property name="realms">
+			<list>
+				<ref bean="jdbcRealm" />
+				<ref bean="secondRealm" />
+			</list>
+		</property>
+
+		<property name="remeberMeManager.cookie.maxAge" value="10"></property>
+
+	</bean>
+	<!-- 2. 配置CacheManager 2.1 需要加入ehcache的jar包 -->
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		<property name="cacheManagerConfigFile" value="classpath:ehcache.xml" />
+	</bean>
+
+	<bean id="authenticator" class="org.apache.shiro.authc.pam.ModularRealmAuthenticator">
+		<property name="authenticationStrategy">
+			<bean class="org.apache.shiro.authc.pam.AtLeastOneSuccessfulStrategy" />
+		</property>
+	</bean>
+
+	<!-- 3.配置Realm 3.1 直接配置实现了org.apache.shiro.realm.Realm接口的bean -->
+	<bean id="jdbcRealm" class="com.wxc.shiro.test.realms.ShiroRealm">
+		<property name="credentialsMatcher">
+			<bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+				<property name="hashAlgorithmName" value="MD5"></property>
+				<property name="hashIterations" value="1024"></property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="secondRealm" class="com.wxc.shiro.test.realms.SecondRealm">
+		<property name="credentialsMathcer">
+			<bean class="org.apache.shiro.authc.credential.HashedCredentialsMathcer">
+				<property name="hashAlgorithmName" value="SHA1"></property>
+				<property name="hashIterations" value="1024"></property>
+			</bean>
+		</property>
+	</bean>
+	<!-- 4.配置LifecycleBeanPostProcessor，可以自定的来调用配置在Spring IOC容器中shiro bean的生命周期方法 -->
+	<bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor" />
+	<!-- 5.启用IOC容器中使用shiro的注解，但必须在配置了ListCycleBeanPostProcessor之后才可以使用 -->
+	<bean
+		class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+		depends-on="liftcycleBeanPostProcessor" />
+	<bean
+		class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+		<property name="securityManager" ref="securityManager" />
+	</bean>
+
+
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<property name="securityManager" ref="securityManager" />
+		<property name="loginUrl" value="/login.jsp" />
+		<property name="successUrl" value="/list.jsp" />
+		<property name="unauthorizedUrl" value="/unauthorized.jsp" />
+		<property name="filterChainDefinitionMap" ref="filterChainDefinitionMap" />
+	</bean>
+
+	<bean id="filterChainDefinitionMap" factory-bean="filterChainDefinitionMapBuilder"
+		factory-method="buildFilterChainDefinitionMap" />
+
+	<bean id="filterChainDefinitionMapBuilder"
+		class="com.wxc.shiro.test.factory.FilterChainDefinitionMapBuilder" />
+	<bean id="shiroService" class="com.wxc.shiro.test.service.ShiroService" />
+
+</beans>
